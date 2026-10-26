@@ -3,7 +3,7 @@
 do $$
 declare pw text := '172839456'; r jsonb;
 begin
-  if pw = 'CHANGE_ME_NOW' then raise exception 'غيّر كلمة السر في السطر اللي فوق الأول'; end if;
+  if pw = '172839456' then raise exception 'غيّر كلمة السر في السطر اللي فوق الأول'; end if;
   r := public._make_user('admin', 'manager', pw);
   if r ? 'error' then raise exception '%', r->>'error'; end if;
 end $$;
