@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ساده سكتو — كافيه</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+</head><body>
+<header><div class="wrap"><a class="logo" href="#top">☕ ساده سكتو</a>
+<nav id="nav"><a href="#about">عنّا</a><a href="#menu">المنيو</a><a href="#book">احجز</a><a href="#visit">تعالى</a></nav></div></header>
+
+<div id="shop">
+<main id="top">
+<div class="wrap hero">
+<div>
+<span class="status"><i class="dot" id="dot"></i><span id="st">...</span></span>
+<h1>ساده سكتو<br>وقهوتك مظبوطة</h1>
+<p>كافيه على كورنيش إسكندرية، بنحمّص البن عندنا كل يوم الصبح. اطلب من الموقع وهيوصل للباريستا فورًا.</p>
+<p style="margin-top:24px"><a class="btn" href="#menu">اطلب دلوقتي</a><a class="btn ghost" href="#book">احجز ترابيزة</a></p>
+</div>
+<div class="cup" aria-hidden="true"><i class="steam"></i><i class="steam"></i><i class="steam"></i><div class="coffee"></div><div class="mug"></div></div>
+</div>
+
+<section id="about"><div class="wrap about">
+<div><h2>حكايتنا</h2>
+<p class="sub">من غير دوشة ولا لف ودوران: قهوة كويسة وقعدة هادية.</p>
+<p>اسمنا هو فلسفتنا: «ساده سكتو». بنختار حبوب البن من إثيوبيا والبرازيل ونحمّصها عندنا كل صباح على درجة متوسطة، عشان الطعم يبقى متوازن من غير مرارة. كل كوباية بتتحضّر لما تطلبها.</p></div>
+<div class="facts">
+<div><b>تحميص يومي</b><br>البن بيتحمّص كل صباح في المكان.</div>
+<div><b>قعدة على البحر</b><br>تراس مفتوح وقعدات داخلية مكيّفة.</div>
+<div><b>واي فاي مجاني</b><br>مناسب للشغل والمذاكرة.</div>
+</div></div></section>
+
+<section id="menu" style="padding-top:0"><div class="wrap">
+<h2>المنيو</h2><p class="sub">اضغط + عشان تضيف للطلب، وبعدها ابعته للباريستا.</p>
+<div class="tabs" role="tablist" id="tabs"></div>
+<div class="menu-grid">
+<ul class="items" id="items"></ul>
+<aside class="order"><h3>طلبك</h3><ul id="cart"></ul><div id="empty" class="empty">لسه ماضفتش حاجة.</div>
+<div class="row2" style="grid-template-columns:1fr auto"><input id="pc" placeholder="كود خصم (لو معاك)" autocomplete="off" autocapitalize="characters" aria-label="كود الخصم"><button class="btn" id="pa" type="button" style="padding:8px 16px;font-size:15px">تطبيق</button></div>
+<p id="pm" class="empty" style="margin:0 0 8px" role="status"></p>
+<div class="tot" id="dl" hidden><span>خصم الكود</span><span id="dv">0 ج.م</span></div>
+<div class="tot"><span>الإجمالي</span><span id="total">0 ج.م</span></div>
+<div class="row2"><input id="on" placeholder="اسمك" autocomplete="name" aria-label="اسمك"><select id="ot" aria-label="مكان الاستلام"><option>تيك أواي</option><option>طاولة 1</option><option>طاولة 2</option><option>طاولة 3</option><option>طاولة 4</option><option>طاولة 5</option><option>طاولة 6</option><option>التراس 1</option><option>التراس 2</option><option>التراس 3</option></select></div>
+<button class="btn" id="send" type="button">ابعت الطلب</button><p id="sent" class="empty" style="margin:10px 0 0" role="status"></p></aside>
+</div></div></section>
+
+<section class="band" id="book"><div class="wrap">
+<h2>احجز ترابيزة</h2><p class="sub">الحجز بيظهر عند الباريستا وهنأكده معاك.</p>
+<form id="bf">
+<label>الاسم<input required id="bn" autocomplete="name"></label>
+<label>رقم الموبايل<input required id="bp" type="tel" inputmode="tel" pattern="01[0-9]{9}" title="رقم موبايل مصري من 11 رقم" autocomplete="tel"></label>
+<label>التاريخ<input required id="bd" type="date"></label>
+<label>الساعة<input required id="bt" type="time" min="08:00" max="23:30" value="19:00"></label>
+<label class="full">عدد الأفراد<select id="bg"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></label>
+<div class="full"><button class="btn" type="submit">احجز دلوقتي</button></div>
+<div class="ok" id="ok" role="status"></div>
+</form></div></section>
+
+<section id="visit"><div class="wrap about">
+<div><h2>تعالى زورنا</h2><p class="sub">كورنيش الإسكندرية، قريب من محطة الرمل.</p>
+<p>مواعيدنا: كل يوم من 8 الصبح لحد 12 بالليل.<br>موبايل: 0100 000 0000</p></div>
+<div class="facts"><div><b>الدليفري</b><br>بنوصّل جوه إسكندرية في حدود 45 دقيقة.</div><div><b>الدفع</b><br>كاش أو فيزا أو محفظة إلكترونية.</div></div>
+</div></section>
+</main>
+</div>
+
+
+<div id="toast" class="toast" role="alert" hidden><span id="toastTx"></span><button id="toastX" type="button" aria-label="إغلاق">×</button></div>
+<footer>© 2026 ساده سكتو</footer>
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="api.js"></script>
+<script src="sound.js"></script>
+<script src="customer.js"></script></body></html>

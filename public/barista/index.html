@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>شاشة الباريستا — ساده سكتو</title>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<header><div class="wrap"><a class="logo" href="./">☕ ساده سكتو — الباريستا</a><button class="tab" id="out" type="button" hidden>خروج</button></div></header>
+
+<div class="wrap bar" id="login" style="max-width:420px">
+<h2>تسجيل الدخول</h2>
+<p class="sub">للباريستا والإدارة بس.</p>
+<form id="lf" style="display:grid;gap:12px">
+<label>اسم المستخدم<input type="text" id="un" value="barista" required autocomplete="username" autocapitalize="none" style="border:1px solid var(--line)"></label>
+<label>كلمة السر<input type="password" id="pw" required autocomplete="current-password" style="border:1px solid var(--line)"></label>
+<button class="btn" type="submit">دخول</button>
+<p id="err" class="nonote" role="alert"></p>
+</form>
+</div>
+
+<div class="wrap bar" id="app" hidden>
+<h2>شاشة الباريستا</h2>
+<p id="live" class="note" hidden>الاتصال اللحظي اتقطع، بنحاول نرجّعه.</p>
+<div class="stats"><div class="stat"><b id="s1">0</b>طلبات مفتوحة</div><div class="stat"><b id="s2">0</b>اتسلّمت النهارده</div><div class="stat"><b id="s3">0 ج.م</b>مبيعات النهارده</div><div class="stat"><b id="s4">0</b>حجوزات جاية</div></div>
+<div class="tabs" id="btabs"><button class="tab" id="tab-o" data-v="o" aria-selected="true" type="button">الطلبات<span class="badge" id="bo" hidden>0</span></button><button class="tab" id="tab-b" data-v="b" aria-selected="false" type="button">الحجوزات<span class="badge" id="bb" hidden>0</span></button><button class="tab" id="snd" type="button">🔔 الصوت</button><button class="tab mgr" data-v="m" aria-selected="false" type="button" hidden>🍽️ المنيو</button><button class="tab mgr" data-v="p" aria-selected="false" type="button" hidden>🏷️ العروض</button><button class="tab mgr" data-v="s" aria-selected="false" type="button" hidden>💰 المبيعات</button><button class="tab mgr" data-v="u" aria-selected="false" type="button" hidden>👤 الحسابات</button></div>
+<div id="vo" class="cols"><div class="col"><h3>جديد</h3><div id="c-new"></div></div><div class="col"><h3>بيتحضّر</h3><div id="c-prep"></div></div><div class="col"><h3>جاهز للتسليم</h3><div id="c-ready"></div></div></div>
+<div id="vb" hidden><p class="warn">⚠️ قبل ما تأكّد أي حجز: كلّم العميل على رقم الموبايل (اتصال أو واتساب) وتأكد منه الأول.</p><div class="cols"><div class="col"><h3>مستنية تأكيد</h3><div id="b-pending"></div></div><div class="col"><h3>مؤكدة</h3><div id="b-ok"></div></div><div class="col"><h3>ملغية</h3><div id="b-no"></div></div></div></div>
+<div id="vm" hidden></div>
+<div id="vp" hidden></div>
+<div id="vs" hidden></div>
+<div id="vu" hidden></div>
+</div>
+<script src="../config.js"></script>
+<script src="../vendor/supabase.js"></script>
+<script src="../api.js"></script>
+<script src="../sound.js"></script>
+<script src="../barista.js"></script>
+<script src="../admin.js"></script>
+</body>
+</html>
