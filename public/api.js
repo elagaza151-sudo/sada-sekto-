@@ -130,9 +130,9 @@ window.SadaAPI = (function () {
     var a = dayStart(from), b = new Date(dayStart(to).getTime()); b.setDate(b.getDate() + 1);
     if (b - a > 366 * 86400e3 || b <= a) return Promise.reject(E("المدة غلط (أقصاها سنة)."));
     return fetchAll(function () {
-      return sb.from("orders").select("id,name,place,items,total,promo,discount,done_by,done_at").eq("status", "done").gte("done_at", a.toISOString()).lt("done_at", b.toISOString()).order("done_at", { ascending: false }).order("id");
+      return sb.from("orders").select("id,name,place,items,total,promo,discount,done_by,done_at,payment_method,notes").eq("status", "done").gte("done_at", a.toISOString()).lt("done_at", b.toISOString()).order("done_at", { ascending: false }).order("id");
     }).then(function (rows) {
-      var orders = rows.map(function (r) { return { id: r.id, name: r.name, place: r.place, items: r.items, total: r.total, promo: r.promo || "", discount: r.discount || 0, by: r.done_by || "", at: Date.parse(r.done_at) }; });
+      var orders = rows.map(function (r) { return { id: r.id, name: r.name, place: r.place, items: r.items, total: r.total, promo: r.promo || "", discount: r.discount || 0, payment_method: r.payment_method || "cash", notes: r.notes || "", by: r.done_by || "", at: Date.parse(r.done_at) }; });
       var byUser = {}, byDay = {};
       orders.forEach(function (o) {
         var u = o.by || "غير مسجّل", d = iso(new Date(o.at));
@@ -140,7 +140,7 @@ window.SadaAPI = (function () {
         (byDay[d] = byDay[d] || { day: d, count: 0, total: 0 }); byDay[d].count++; byDay[d].total += o.total;
       });
       var sum = function (k) { return orders.reduce(function (x, o) { return x + o[k]; }, 0); };
-      return { from: from, to: to, count: orders.length, total: sum("total"), discounts: sum("discount"),
+      return { from: from, to: to, count: orders.length, total: sum("total"), discounts: sum("discount"), byPayment: { cash: orders.filter(function(o){return o.payment_method === "cash";}).reduce(function(a,o){return a+o.total;},0), card: orders.filter(function(o){return o.payment_method === "card";}).reduce(function(a,o){return a+o.total;},0), instapay: orders.filter(function(o){return o.payment_method === "instapay";}).reduce(function(a,o){return a+o.total;},0) },
         byUser: Object.keys(byUser).map(function (k) { return byUser[k]; }).sort(function (x, y) { return y.total - x.total; }),
         byDay: Object.keys(byDay).map(function (k) { return byDay[k]; }).sort(function (x, y) { return y.day.localeCompare(x.day); }), orders: orders };
     });
@@ -150,7 +150,7 @@ window.SadaAPI = (function () {
   function listOrders() {
     var t = new Date(); t.setHours(0, 0, 0, 0);
     return sb.from("orders").select("*").or("status.neq.done,updated_at.gte." + t.toISOString()).order("created_at").then(unwrap).then(function (rows) {
-      return rows.map(function (r) { return { id: r.id, name: r.name, place: r.place, items: r.items, total: r.total, status: r.status, ts: Date.parse(r.created_at), promo: r.promo || "", discount: r.discount || 0 }; });
+      return rows.map(function (r) { return { id: r.id, name: r.name, place: r.place, items: r.items, total: r.total, status: r.status, ts: Date.parse(r.created_at), promo: r.promo || "", discount: r.discount || 0, notes: r.notes || "", payment_method: r.payment_method || "cash" }; });
     });
   }
   function listBookings() {
@@ -160,7 +160,7 @@ window.SadaAPI = (function () {
   /* ----- الراوتر ----- */
   var routes = [
     ["GET", /^\/api\/menu$/, function () { return publicMenu(); }],
-    ["POST", /^\/api\/orders$/, function (m, b) { return rpc("place_order", { p_items: b.items || [], p_place: String(b.place || ""), p_name: String(b.name || ""), p_code: String(b.code || "") }); }],
+    ["POST", /^\/api\/orders$/, function (m, b) { return rpc("place_order_v2", { p_items: b.items || [], p_place: String(b.place || ""), p_name: String(b.name || ""), p_code: String(b.code || ""), p_notes: String(b.notes || ""), p_payment_method: String(b.payment_method || "cash") }); }],
     ["POST", /^\/api\/promo\/check$/, function (m, b) { return rpc("check_promo", { p_items: b.items || [], p_code: String(b.code || "") }); }],
     ["GET", /^\/api\/orders\/track\/(.+)$/, function (m) { return rpc("track_order", { p_ref: m[1] }); }],
     ["POST", /^\/api\/bookings$/, function (m, b) { return rpc("place_booking", { p_name: String(b.name || ""), p_phone: String(b.phone || ""), p_date: String(b.date || ""), p_time: String(b.time || ""), p_guests: Math.floor(Number(b.guests)) || 0 }); }],
@@ -191,6 +191,8 @@ window.SadaAPI = (function () {
     ["POST", /^\/api\/admin\/users$/, staff(function (m, b) { return rpc("admin_create_user", { p_username: String(b.username || ""), p_pw: String(b.password == null ? "" : b.password), p_role: b.role === "manager" ? "manager" : "barista" }); })],
     ["PATCH", /^\/api\/admin\/users\/([0-9a-f-]{36})$/, staff(function (m, b) { return rpc("admin_set_password", { p_id: m[1], p_pw: String(b.password == null ? "" : b.password) }); })],
     ["DELETE", /^\/api\/admin\/users\/([0-9a-f-]{36})$/, staff(function (m) { return rpc("admin_delete_user", { p_id: m[1] }); })],
+    ["GET", /^\/api\/admin\/payment-settings$/, staff(function () { return sb.from("payment_settings").select("bank_name,bank_account,instapay_number").eq("id",1).single().then(unwrap); })],
+    ["PATCH", /^\/api\/admin\/payment-settings$/, staff(function (m,b) { return sb.from("payment_settings").update({bank_name:String(b.bank_name||"").slice(0,100),bank_account:String(b.bank_account||"").slice(0,100),instapay_number:String(b.instapay_number||"").slice(0,50),updated_at:new Date().toISOString()}).eq("id",1).then(unwrap).then(function(){return {ok:true};}); })],
     ["GET", /^\/api\/admin\/sales$/, staff(function (m, b, q) { return sales(q); })]
   ];
   function call(url, method, body) {

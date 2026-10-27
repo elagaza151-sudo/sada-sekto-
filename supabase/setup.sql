@@ -28,6 +28,19 @@ create table if not exists public.orders(
 create index if not exists idx_orders_status on public.orders(status);
 create index if not exists idx_orders_done_at on public.orders(done_at);
 
+-- بيانات الطلب والدفع (آمن عند إعادة تشغيل الملف)
+alter table public.orders add column if not exists notes text not null default '';
+alter table public.orders add column if not exists payment_method text not null default 'cash' check (payment_method in ('cash','card','instapay'));
+
+create table if not exists public.payment_settings(
+  id int primary key default 1 check (id = 1),
+  bank_name text not null default '',
+  bank_account text not null default '',
+  instapay_number text not null default '',
+  updated_at timestamptz not null default now()
+);
+insert into public.payment_settings(id) values (1) on conflict (id) do nothing;
+
 create table if not exists public.bookings(
   id bigint generated always as identity primary key,
   public_id uuid unique not null default gen_random_uuid(),
@@ -50,6 +63,7 @@ alter table public.orders enable row level security;
 alter table public.bookings enable row level security;
 alter table public.promos enable row level security;
 alter table public.promo_fail enable row level security;
+alter table public.payment_settings enable row level security;
 
 create or replace function public.my_role() returns text
 language sql stable security definer set search_path = public as
@@ -63,6 +77,7 @@ grant insert, update, delete on public.menu_items to authenticated;
 grant select on public.profiles, public.orders, public.bookings to authenticated;
 grant update (status) on public.bookings to authenticated;
 grant select, insert, update, delete on public.promos to authenticated;
+grant select, update on public.payment_settings to authenticated;
 
 drop policy if exists p_profiles_sel on public.profiles;
 create policy p_profiles_sel on public.profiles for select to authenticated using (id = auth.uid() or public.my_role() = 'manager');
@@ -83,6 +98,9 @@ drop policy if exists p_book_sel on public.bookings;
 create policy p_book_sel on public.bookings for select to authenticated using (public.my_role() is not null);
 drop policy if exists p_book_upd on public.bookings;
 create policy p_book_upd on public.bookings for update to authenticated using (public.my_role() is not null) with check (public.my_role() is not null);
+
+drop policy if exists p_payment_settings_manager on public.payment_settings;
+create policy p_payment_settings_manager on public.payment_settings for all to authenticated using (public.my_role() = 'manager') with check (public.my_role() = 'manager');
 
 drop policy if exists p_promos_all on public.promos;
 create policy p_promos_all on public.promos for all to authenticated using (public.my_role() = 'manager') with check (public.my_role() = 'manager');
@@ -157,6 +175,24 @@ begin
   returning id, public_id, total, discount into r;
   return jsonb_build_object('id', r.id, 'ref', r.public_id, 'total', r.total, 'discount', r.discount);
 end $$;
+
+create or replace function public.place_order_v2(p_items jsonb, p_place text, p_name text, p_code text, p_notes text, p_payment_method text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare o jsonb; r record; places text[] := array['تيك أواي','طاولة 1','طاولة 2','طاولة 3','طاولة 4','طاولة 5','طاولة 6','التراس 1','التراس 2','التراس 3']; pm text := coalesce(p_payment_method,'cash');
+begin
+  if not (p_place = any(places)) then return jsonb_build_object('error','اختار مكان الاستلام.'); end if;
+  if pm not in ('cash','card','instapay') then return jsonb_build_object('error','اختار طريقة دفع صحيحة.'); end if;
+  if p_place <> 'تيك أواي' then pm := 'cash'; end if;
+  if (select count(*) from orders where created_at > now() - interval '1 minute') >= 40 or (select count(*) from orders where status = 'new') >= 150 then return jsonb_build_object('error','طلبات كتير، استنى شوية وجرّب تاني.'); end if;
+  o := public._price_order(p_items, p_code, true); if o ? 'error' then return o; end if;
+  if o ? 'promo_id' then update promos set used = used + 1 where id = (o->>'promo_id')::bigint and (max_uses = 0 or used < max_uses); if not found then return jsonb_build_object('error','كود الخصم خلص عدد مرات استخدامه.'); end if; end if;
+  insert into orders(name, place, items, total, promo, discount, notes, payment_method)
+  values (coalesce(nullif(public._clean(p_name,40),''),'بدون اسم'),p_place,o->'lines',(o->>'total')::int,o->>'promo_code',(o->>'discount')::int,public._clean(p_notes,250),pm)
+  returning id, public_id, total, discount into r;
+  return jsonb_build_object('id',r.id,'ref',r.public_id,'total',r.total,'discount',r.discount);
+end $$;
+revoke all on function public.place_order_v2(jsonb,text,text,text,text,text) from public;
+grant execute on function public.place_order_v2(jsonb,text,text,text,text,text) to anon, authenticated;
 
 create or replace function public.track_order(p_ref text) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -288,7 +324,7 @@ end $$;
 /* صلاحيات تنفيذ الدوال */
 do $$ declare f text; begin
   foreach f in array array[
-    'check_promo(jsonb,text)','place_order(jsonb,text,text,text)','track_order(text)','place_booking(text,text,text,text,int)','track_booking(text)'] loop
+    'check_promo(jsonb,text)','place_order(jsonb,text,text,text)','place_order_v2(jsonb,text,text,text,text,text)','track_order(text)','place_booking(text,text,text,text,int)','track_booking(text)'] loop
     execute format('revoke all on function public.%s from public', f);
     execute format('grant execute on function public.%s to anon, authenticated', f);
   end loop;

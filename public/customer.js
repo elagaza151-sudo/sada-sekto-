@@ -101,8 +101,8 @@ $("send").onclick = function () {
   var items = Object.keys(cart).map(function (n) { return { n: n, q: cart[n].n }; }), s = $("sent"), b = $("send");
   if (window.Sound) Sound.unlock();
   b.disabled = true; s.textContent = "بنبعت طلبك...";
-  api("/api/orders", { body: { items: items, name: $("on").value, place: $("ot").value, code: promo.code } }).then(function (r) {
-    cart = {}; promo = { code: "", discount: 0 }; $("pc").value = ""; draw(); var o = { id: r.id, ref: r.ref, last: "new" }; store("sada_order", o); watchOrder(o);
+  api("/api/orders", { body: { items: items, name: $("on").value, place: $("ot").value, code: promo.code, notes: $("order-note").value, payment_method: $("ot").value === "تيك أواي" ? $("payment-method").value : "cash" } }).then(function (r) {
+    cart = {}; promo = { code: "", discount: 0 }; $("pc").value = ""; $("order-note").value = ""; draw(); var o = { id: r.id, ref: r.ref, last: "new" }; store("sada_order", o); watchOrder(o);
   }).catch(function (e) { s.textContent = e.message; b.disabled = false; });
 };
 $("bf").onsubmit = function (e) {
@@ -121,3 +121,11 @@ $("bf").onsubmit = function (e) {
 api("/api/menu").then(function (m) { M = m; cat = Object.keys(M)[0]; tabs(); list(); draw(); }).catch(function () { $("items").textContent = "مقدرناش نحمّل المنيو، حدّث الصفحة."; });
 
 (function () { var o = load("sada_order"), b = load("sada_booking"); if (o && o.ref) watchOrder(o); if (b && b.ref) { $("ok").style.display = "block"; $("ok").textContent = "حجزك مستني تأكيد الكافيه..."; watchBooking(b); } })();
+
+// خيارات الدفع تظهر لطلبات التيك أواي فقط. إنستا باي يتم عند الاستلام مع إظهار صورة التحويل للكاشير.
+(function(){
+ var place=$("ot"), box=$("payment-box"), method=$("payment-method"), help=$("payment-help");
+ function upd(){ var takeaway=place.value==="تيك أواي"; box.hidden=!takeaway; if(!takeaway)return;
+  help.textContent=method.value==="instapay"?"ملحوظة: ادفع إنستا باي وقت استلام الأوردر، وورّي الكاشير صورة التحويل.":method.value==="card"?"الدفع بالفيزا عند استلام الأوردر.":"الدفع كاش وقت استلام الأوردر.";
+ } place.addEventListener("change",upd); method.addEventListener("change",upd); upd();
+})();

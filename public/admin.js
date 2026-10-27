@@ -83,6 +83,10 @@ window.Admin = (function () {
       var st = el("div", "stats");
       [[d.total + " ج.م", "إجمالي الفلوس الداخلة"], [d.count, "عدد الطلبات"], [d.discounts + " ج.م", "خصومات الأكواد"], [d.count ? Math.round(d.total / d.count) + " ج.م" : "0 ج.م", "متوسط الطلب"]].forEach(function (p) { var s = el("div", "stat"); s.appendChild(el("b", "", p[0])); s.appendChild(document.createTextNode(p[1])); st.appendChild(s); });
       box.appendChild(st);
+      var pay = d.byPayment || {cash:0,card:0,instapay:0};
+      var payStats = el("div", "stats");
+      [[d.total + " ج.م", "إجمالي المبيعات"],[pay.cash + " ج.م", "إجمالي الكاش"],[pay.card + " ج.م", "إجمالي الفيزا"],[pay.instapay + " ج.م", "إجمالي إنستا باي"]].forEach(function(p){var st=el("div","stat");st.appendChild(el("b","",p[0]));st.appendChild(document.createTextNode(p[1]));payStats.appendChild(st);});
+      box.appendChild(el("h3", "", "المبيعات حسب طريقة الدفع")); box.appendChild(payStats);
       box.appendChild(el("h3", "", "حسب الحساب"));
       if (!d.byUser.length) box.appendChild(el("p", "nonote", "مفيش مبيعات في المدة دي."));
       d.byUser.forEach(function (u) { var c = el("div", "card"), t = el("div", "top"); t.appendChild(el("span", "", u.username)); t.appendChild(el("span", "price", u.total + " ج.م")); c.appendChild(t); c.appendChild(el("div", "meta", u.count + " طلب")); box.appendChild(c); });
@@ -97,6 +101,8 @@ window.Admin = (function () {
         c.appendChild(el("div", "meta", "📅 " + fmtDate(o.at) + "   🕒 " + fmtTime(o.at) + "   👤 " + (o.by || "غير مسجّل")));
         c.appendChild(el("div", "meta", o.items.map(function (i) { return i.n + " × " + i.q; }).join("، ")));
         if (o.promo) c.appendChild(el("div", "meta", "🏷️ كود " + o.promo + " (−" + o.discount + " ج.م)"));
+        c.appendChild(el("div", "meta", "💳 الدفع: " + (o.payment_method === "card" ? "فيزا" : o.payment_method === "instapay" ? "إنستا باي" : "كاش")));
+        if (o.notes) c.appendChild(el("div", "need", "📝 ملحوظة: " + o.notes));
         box.appendChild(c);
       });
     }).catch(function (e) { msg(e.message); });
@@ -104,8 +110,8 @@ window.Admin = (function () {
   function csvCell(v) { v = String(v); return /^[=+\-@\t\r]/.test(v) ? "'" + v : v; }
   function exportCsv() {
     if (!lastSales) return;
-    var rows = [["رقم الطلب", "التاريخ", "الساعة", "الحساب", "المكان", "الاسم", "الأصناف", "كود الخصم", "قيمة الخصم", "الإجمالي"]];
-    lastSales.orders.forEach(function (o) { rows.push([o.id, fmtDate(o.at), fmtTime(o.at), o.by || "غير مسجّل", o.place, o.name, o.items.map(function (i) { return i.n + " × " + i.q; }).join(" | "), o.promo, o.discount, o.total]); });
+    var rows = [["رقم الطلب", "التاريخ", "الساعة", "الحساب", "المكان", "الاسم", "الأصناف", "كود الخصم", "قيمة الخصم", "طريقة الدفع", "ملحوظة", "الإجمالي"]];
+    lastSales.orders.forEach(function (o) { rows.push([o.id, fmtDate(o.at), fmtTime(o.at), o.by || "غير مسجّل", o.place, o.name, o.items.map(function (i) { return i.n + " × " + i.q; }).join(" | "), o.promo, o.discount, o.payment_method || "cash", o.notes || "", o.total]); });
     var csv = "\ufeff" + rows.map(function (r) { return r.map(function (c) { return '"' + csvCell(c).replace(/"/g, '""') + '"'; }).join(","); }).join("\r\n");
     var a = el("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = "sales-" + lastSales.from + "_" + lastSales.to + ".csv"; a.click();
   }
@@ -174,12 +180,28 @@ window.Admin = (function () {
     }).catch(function (e) { msg(e.message); });
   }
 
+  /* ----- إعدادات الدفع: تظهر للمدير فقط وتتحمى كمان بسياسات قاعدة البيانات ----- */
+  function drawPaymentSettings() {
+    var box=$("vpay"); box.innerHTML="";
+    box.appendChild(el("h3","","بيانات الدفع والاستلام"));
+    box.appendChild(el("p","sub","البيانات دي خاصة بالمدير فقط. الباريستا مش هيشوف رقم الحساب البنكي أو إنستا باي هنا."));
+    box.appendChild(el("p","nonote")).id="paymsg";
+    req("/api/admin/payment-settings").then(function(d){
+      var card=el("div","card"), bank=field("اسم البنك",d.bank_name), account=field("رقم الحساب / IBAN",d.bank_account), insta=field("رقم إنستا باي",d.instapay_number);
+      card.appendChild(el("label","","اسم البنك")); card.appendChild(bank);
+      card.appendChild(el("label","","رقم الحساب البنكي أو IBAN")); card.appendChild(account);
+      card.appendChild(el("label","","رقم إنستا باي للتحويل")); card.appendChild(insta);
+      card.appendChild(button("حفظ بيانات الدفع","",function(){return req("/api/admin/payment-settings","PATCH",{bank_name:bank.value,bank_account:account.value,instapay_number:insta.value}).then(function(){ $("paymsg").textContent="تم حفظ بيانات الدفع."; });}));
+      box.appendChild(card);
+    }).catch(function(e){$("paymsg").textContent=e.message;});
+  }
+
   return {
     init: function (me) { window.ME = me; if (me.role == "manager") [].forEach.call(document.querySelectorAll(".mgr"), function (b) { b.hidden = false; }); },
-    show: function (t) { t == "m" ? drawMenu() : t == "s" ? drawSales() : t == "p" ? drawPromos() : drawUsers(); },
+    show: function (t) { t == "m" ? drawMenu() : t == "s" ? drawSales() : t == "p" ? drawPromos() : t == "pay" ? drawPaymentSettings() : drawUsers(); },
     reset: function () {
       [].forEach.call(document.querySelectorAll(".mgr"), function (b) { b.hidden = true; });
-      $("vm").hidden = $("vu").hidden = $("vs").hidden = $("vp").hidden = true; $("vp").innerHTML = ""; $("vm").innerHTML = $("vu").innerHTML = $("vs").innerHTML = ""; salesRange = lastSales = null;
+      $("vm").hidden = $("vu").hidden = $("vs").hidden = $("vp").hidden = $("vpay").hidden = true; $("vp").innerHTML = ""; $("vm").innerHTML = $("vu").innerHTML = $("vs").innerHTML = $("vpay").innerHTML = ""; salesRange = lastSales = null;
       window.tab = "o"; $("vo").hidden = false; $("vb").hidden = true;
       [].forEach.call($("btabs").children, function (x) { if (x.dataset.v) x.setAttribute("aria-selected", x.dataset.v == "o"); });
     }

@@ -10,6 +10,16 @@ function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c
 function ago(ts) { var m = Math.max(0, Math.round((Date.now() - ts) / 60000)); return m < 1 ? "دلوقتي" : "من " + m + " د"; }
 function btn(txt, cls, fn) { var b = el("button", "btn " + (cls || ""), txt); b.type = "button"; b.onclick = function () { b.disabled = true; fn().catch(function () { b.disabled = false; }); }; return b; }
 function link(txt, href, cls) { var a = el("a", "btn " + (cls || ""), txt); a.href = href; a.target = "_blank"; a.rel = "noopener"; return a; }
+function payName(v) { return v === "card" ? "فيزا" : v === "instapay" ? "إنستا باي" : "كاش"; }
+function printReceipt(o) {
+  var w=window.open("","_blank","width=420,height=650");
+  if(!w){alert("اسمح بفتح النوافذ المنبثقة عشان تطبع الريسيت.");return;}
+  var esc=function(x){return String(x==null?"":x).replace(/[&<>\"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});};
+  var lines=o.items.map(function(i){return '<tr><td>'+esc(i.n)+' × '+esc(i.q)+'</td><td>'+esc((i.p||0)*i.q)+' ج.م</td></tr>';}).join("");
+  var html='<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>ريسيت #'+esc(o.id)+'</title><style>body{font:16px Tahoma,Arial;padding:18px;color:#111}h2,p{text-align:center}table{width:100%;border-collapse:collapse}td{padding:8px 2px;border-bottom:1px dashed #aaa}.total{font-size:20px;font-weight:bold;margin-top:15px}.muted{font-size:13px}</style><h2>☕ ساده سكتو</h2><p>ريسيت طلب رقم #'+esc(o.id)+'</p><p>'+esc(o.place)+' — '+esc(o.name)+'</p><table>'+lines+'</table><p class="total">الإجمالي: '+esc(o.total)+' ج.م</p><p>الدفع: '+payName(o.payment_method)+'</p>'+(o.notes?'<p>ملحوظة: '+esc(o.notes)+'</p>':'')+'<p class="muted">شكرًا لزيارتكم ❤️</p>';
+  html+='<scr'+'ipt>window.onload=function(){window.print();window.close();};</scr'+'ipt></html>';
+  w.document.write(html);w.document.close();
+}
 var NEXT = { new: ["prep", "ابدأ التحضير"], prep: ["ready", "جاهز"], ready: ["done", "تم التسليم"] };
 
 /* ----- الصوت والتنبيهات ----- */
@@ -46,6 +56,9 @@ function draw() {
       var cd = el("div", "card" + (s == "new" ? " new" : "")), t = el("div", "top");
       t.appendChild(el("span", "", "#" + o.id + " — " + o.place + " — " + o.name)); t.appendChild(el("span", "price", o.total + " ج.م")); cd.appendChild(t);
       var u = el("ul"); o.items.forEach(function (i) { u.appendChild(el("li", "", i.n + " × " + i.q)); }); cd.appendChild(u);
+      cd.appendChild(el("div", "meta", "💳 طريقة الدفع: " + payName(o.payment_method)));
+      if (o.notes) cd.appendChild(el("div", "need", "📝 ملحوظة: " + o.notes));
+      cd.appendChild(btn("🖨️ طباعة الريسيت", "red", function(){ printReceipt(o); return Promise.resolve(); }));
       if (o.promo) cd.appendChild(el("div", "meta", "🏷️ كود " + o.promo + " (−" + o.discount + " ج.م)"));
       cd.appendChild(el("div", "meta", ago(o.ts)));
       var nx = NEXT[s]; cd.appendChild(btn(nx[1], "", function () { return api("/api/orders/" + o.id, { method: "PATCH", body: { status: nx[0] } }); }));
@@ -114,7 +127,7 @@ $("out").onclick = function () { api("/api/logout", { method: "POST", body: {} }
   b.onclick = function () {
     tab = b.dataset.v; unseen[tab] = 0;
     [].forEach.call($("btabs").children, function (x) { if (x.dataset.v) x.setAttribute("aria-selected", x == b); });
-    $("vo").hidden = tab != "o"; $("vb").hidden = tab != "b"; $("vm").hidden = tab != "m"; $("vu").hidden = tab != "u"; $("vs").hidden = tab != "s"; $("vp").hidden = tab != "p";
+    $("vo").hidden = tab != "o"; $("vb").hidden = tab != "b"; $("vm").hidden = tab != "m"; $("vu").hidden = tab != "u"; $("vs").hidden = tab != "s"; $("vp").hidden = tab != "p"; $("vpay").hidden = tab != "pay";
     if (window.Admin && (tab == "m" || tab == "u" || tab == "s" || tab == "p")) Admin.show(tab);
     updateTabs();
   };
